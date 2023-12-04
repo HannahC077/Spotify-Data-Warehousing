@@ -1,0 +1,142 @@
+	SPOTIFY STREAMING
+
+* Download: Create_Dimensions.sql
+            Create_Facts.sql
+            EXCEL Files
+
+A. Setup SQL Server
+
+ 1. Open SQL Server Management Studio
+ 2. Server Name: name of your device
+
+B. Create the Database
+
+ 3. Right click Databases folder and choose  "New Database"; Name: SpotifySP
+ 4. Click on SpotifySP in the Tables folder and expand. 
+ 5. Click "New Query". Copy paste the contents of Create_Dimensions.sql and the Create_Facts file and click Execute at the top.
+ 6. Do the same for the Create_Fact.sql and execute the commands.
+ 7. Right-click the Tables folder and click Refresh.
+
+
+C. Getting Started
+
+ 1. Open Visual Studio
+ 2. Click New Project then search for "Integration Services Project"
+ 3. Name the project: Spotify SP
+ 4. On the right side, rename package.dtsx to: SpotifySPDimensions.dtsx
+
+D. Loading the Dimensions & Setting Up Slowly Changing Dimension (SCD)
+
+ 1. Inside the Control Flow tab, double-click the Data Flow Task.
+ 2. Rename it to: Load Track Dim DF
+ 3. Double-click the Load Track Dim DF control.
+ 4. Inside the Data Flow tab, drag the Excel Source control onto the canvas.
+ 5. Rename it to: Track File.
+ 6. Double-click the Excel File control.
+ 7. Click New.. to create a new connection.
+ 8. Click browse and locate the file: track_dim.xlsx
+ 9. Check the box for "first row has column names"
+ 10. In the Excel connection manager, it should say: Excel Connection Manager.
+ 11. Set the name of the excel sheet to: track_dim$
+ 12. Navigate to Columns on the left side and double-check if the columns are all correct.
+ 13. Click OK. The Track File control should not have any error icon.
+
+ [SLOWLY CHANGING DIMENSION]	
+
+ 14. Drag the Slowly Changing Destination Control, link the Excel Source and double-click it.
+     Rename it to Track SCD
+ 15. Set the connection manager to: [Device Name].SpotifySP
+ 16. In the dropdown menu for the name of the table, click: dbo.DimTrack
+ 17. In the column list, make sure that the Input Columns match up with the Dimension Columns.
+ 18. Set all the columns to: Not a key column 
+     EXCEPT for (Track_ID, Artist_ID, Track_ID, Feature_ID), set these to Business Key
+     DONT link the Active_Ind column
+
+    *FOR CONFLICTING DATA TYPES: Error -> Cannot map to columns of different keys
+		
+	   1. Drag the Data Conversion Control and link it in between the Excel Source File and the SCD Control.
+           2. Create new columns with the columns that have a conflicting data type. Set the new data type to its equivalent: 
+		    System.int32  = DT_I4
+		    System.double = DT_Decimal
+		    Date = DT_DBDATE
+		   
+		> Refer to this: https://learn.microsoft.com/en-us/sql/integration-services/data-flow/integration-services-data-types?view=sql-server-ver16
+ 	
+ 	*FOR TRACK_DIM: Add a Conditional Split control inbetween the Data Conversion control and the SCD control and configure it with this function: ISNULL(title)
+---------------------------------------------------      
+[DATA CONVERSION & MAPPING]
+
+Track_Dim
+ Active_Ind, Explicit -> DT_I2, 
+ Total_Tracks, Duration_ms, Track_Number -> DT_I4     
+
+  
+Date_Dim 
+ Date_Id -> Business Key
+ Year -> DT_I4 
+ Release_date -> DT_DBDATE
+
+
+Features_Dim 
+ all features -> DT_NUMERIC
+ Key -> DT_I2
+ Mode -> DT_I4
+------------------------------------------------------
+	   3. After setting this new data type, go back to the SCD control and select all the NEW COLUMNS made in the Input column.
+
+ 19. Set the SCD Methodology for the fields in question:
+
+       >SCD II (Historical attribute):     ARTIST                      TRACK
+                                       Artist_Name, Artist_ID     Title, Track_ID
+
+                                           DATE                        TRACK
+       >SCD I (Changing attribute):    Release_Date, Year        Track_Number, Track_Type, Explicit, Duration_ms, Album_Type, Album_Total_Tracks, Active_Ind
+ 
+       		                          FEATURE
+                                      (all attributes)
+
+      >NORMAL (Refer below):          Popularity_Streams
+
+20. Click Next. 
+     IF (Historical attribute): Set the column to indicate current record to: Active_Ind
+                                Set value when current: 1
+                                Set value when expired: 0
+     IF (Changing attribute): Click next again.
+ 21. Uncheck the Enable inferred member support box. Click Finish.
+ 22. Click Start to start testing the mapping. All controls should show the green check icon.
+ 23. Load all rows in the SQL Server Management Studio by querying: SELECT * FROM [SpotifySP].[dbo].[DimTrack]
+ 24. Restart the mapping and reload the rows in SSMS and check if the rows remain at 61,351 and will not double. [NAH DONT DO THIS IT TAKES FOREVER]
+ 
+ * Comment out the empty columns for Date inside the Create_Dimensions.sql
+
+ > SCD TABLES LOADED CORRECTLY: 
+    Artist_Dim, Date_Dim, Popularity_Streams, Track_Dim
+ 
+ > TABLES NOT LOADED YET:
+    Features_Dim
+------------------------------------------------------------------------------------------------------------------------
+
+ [IGNORE! - GENERAL INSTRUCTIONS FOR NORMAL DIMENSION]
+
+ 14. Drag the OLE DB Destination control onto the canvas. 
+ 15. Rename it to: Date Dimension
+ 16. Link the blue arrow from Product Control to the Date Dimension. Double-click the Date Dimension control. 
+ 17. Click New... to create a new connection. And click New... again.
+ 18. For the server name, name it to the same name as step A2.
+ 19. Set the authentication to: Windows Authentication 
+ 20. Set the database name to: SpotifySP
+ 21. Click OK until you are back to the OLE DB Destination Editor window.
+ 22. Set the connection manager to: [Device Name].SpotifySP
+ 23. In the dropdown menu for the name of the table, click: dbo.DimDate
+ 24. On the left side, click Mappings.
+ 25. Check if all the columns are mapped to each other EXCEPT date_key -> Date_key. If there is a line, right-click the line and delete the mapping.
+ 26. Click OK. The Date Dimension control should have the triangle error icon.
+ 27. Click Start at the top to test the mapping.
+ 28. The mapping should display the green check icon. Then click Stop to stop the mapping.
+ 29. Go back to Microsoft SQL Server Management studio to verify if the rows were loaded.
+ 30. Load all the rows by querying: SELECT * FROM [SpotifySP].[dbo].[DimDate]
+
+ * Redo the same process for all the other dimensions.
+ * For Date Dimension, comment out all the empty attributes for now. [RETEST WITHOUT COMMENTING OUT]
+
+----------------------------------------------------------------------------------------------------------------------------------------
