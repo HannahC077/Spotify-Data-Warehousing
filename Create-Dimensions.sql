@@ -1,11 +1,12 @@
     CREATE TABLE DimDate (
         Date_Key int NOT NULL IDENTITY(1,1),
-        Release_Date date NOT NULL,
         Date_ID nvarchar(255) NOT NULL,  --surrogate key
-        -- Month_Number int NOT NULL,
-        -- Month_Name nvarchar(50) NOT NULL,
-        -- Day int NOT NULL,
-        -- Quarter int NOT NULL,
+        Release_Date date NOT NULL,
+        Month_Number int NOT NULL,
+        Month_Name nvarchar(50) NOT NULL,
+        Day int NOT NULL,
+        Day_Name nvarchar(50) NOT NULL,
+        Quarter int NOT NULL,
         Year int NOT NULL
     );
     GO
@@ -18,6 +19,8 @@
         Track_Type nvarchar(255) NOT NULL,
         Explicit smallint NOT NULL,
         Duration_ms int NOT NULL,
+        Duration_ss int NOT NULL,
+        Duration_mn int NOT NULL,
         Album_Type nvarchar(255) NOT NULL,
         Album_Total_Tracks int NOT NULL,
         Active_Ind smallint NOT NULL DEFAULT 1
@@ -27,17 +30,17 @@
     CREATE TABLE DimFeature (
         Feature_Key int NOT NULL IDENTITY(1,1),
         Feature_ID nvarchar(255) NOT NULL, --surrogate key
-        Valence numeric(38, 30) NOT NULL,
-        Acousticness numeric(38, 30) NOT NULL,
-        Danceability numeric(38, 30) NOT NULL,
-        Energy numeric(38, 30) NOT NULL,
-        Instrumentalness numeric(38, 30) NOT NULL,
+        Valence numeric(38, 10) NOT NULL,
+        Acousticness numeric(38, 10) NOT NULL,
+        Danceability numeric(38, 10) NOT NULL,
+        Energy numeric(38, 10) NOT NULL,
+        Instrumentalness numeric(38, 10) NOT NULL,
         KeyFeature int NOT NULL, 
-        Liveness numeric(38, 30) NOT NULL,
-        Loudness numeric(38, 30) NOT NULL,
+        Liveness numeric(38, 10) NOT NULL,
+        Loudness numeric(38, 10) NOT NULL,
         Mode smallint NOT NULL,
-        Speechiness numeric(38, 30) NOT NULL,
-        Tempo numeric(38, 30) NOT NULL
+        Speechiness numeric(38, 10) NOT NULL,
+        Tempo numeric(38, 10) NOT NULL
     );
     GO
 

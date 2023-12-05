@@ -1,4 +1,4 @@
-	SPOTIFY STREAMING
+************SPOTIFY STREAMING*******************
 
 * Download: Create_Dimensions.sql
             Create_Facts.sql
@@ -26,6 +26,9 @@ C. Getting Started
  4. On the right side, rename package.dtsx to: SpotifySPDimensions.dtsx
 
 D. Loading the Dimensions & Setting Up Slowly Changing Dimension (SCD)
+
+! NOTE: If you encounter any problems/have made new changes to the structure of your dimension tables, DELETE THE WHOLE DATABASE in SQL Server Management Studio.
+        Be sure to check the "Close any existing connections" before deleting or else it will take forever. Deleting a single table will also take forever.
 
  1. Inside the Control Flow tab, double-click the Data Flow Task.
  2. Rename it to: Load Track Dim DF
@@ -62,19 +65,48 @@ D. Loading the Dimensions & Setting Up Slowly Changing Dimension (SCD)
 		   
 		> Refer to this: https://learn.microsoft.com/en-us/sql/integration-services/data-flow/integration-services-data-types?view=sql-server-ver16
  	
- 	*FOR TRACK_DIM: Add a Conditional Split control inbetween the Data Conversion control and the SCD control and configure it with this function: ISNULL(title)
+ 	*FOR TRACK_DIM: 
+		
+		1. Drag a Derived Column control and place it inbetween the Excel Source Control and the Data Conversion control. We will be creating new columns and casting it with
+    		   the appropriate SSIS data type.
+		2. Name the derived column: duration_ss/duration_mn.
+		3. Choose <add as new column> in the Derived Column column.
+		4. In the Expression area input this:
+			duration_ms = (DT_I4) duration_ms / 1000
+			duration_mn = (DT_I4) duration_ms / 60000
+		5. Click OK and see if there are no errors.	
+		6. Add a Conditional Split control inbetween the Data Conversion control and the SCD control and configure it with this function: ISNULL(title)
+		7. Proceed to configuring the Data Conversion Control.
+
+
+	*FOR DATE_DIM: We have to break down the Release_Date column into -> Month, Day, Quarter 
+             
+		1. Drag a Derived Column control and place it inbetween the Excel Source Control and the Data Conversion control. We will be creating new columns and casting it with
+    		   the appropriate SSIS data type.
+		2. Name the derived column: month/day/quarter/dayName/monthName.
+		3. Choose <add as new column> in the Derived Column column.
+		4. In the Expression area input this:
+			month = DATEPART("month",release_date)
+			day = DATEPART("day",release_date)
+			quarter = DATEPART("quarter",release_date)
+			dayName = DATEPART("day",release_date) == 1 ? "Sunday" : DATEPART("dw",release_date) == 2 ? "Monday" : DATEPART("dw",release_date) == 3 ? "Tuesday" : DATEPART("dw",release_date) == 4 ? "Wednesday" : DATEPART("dw",release_date) == 5 ? "Thursday" : DATEPART("dw",release_date) == 6 ? "Friday" : DATEPART("dw",release_date) == 7 ? "Saturday" : ""
+ 			monthName = (MONTH(release_date) == 1 ? "Jan" :MONTH(release_date) == 2 ? "Feb" :MONTH(release_date) == 3 ? "Mar" :MONTH(release_date) == 4 ? "Apr" :MONTH(release_date) == 5 ? "May" :MONTH(release_date) == 6 ? "Jun" :MONTH(release_date) == 7 ? "Jul" :MONTH(release_date) == 8 ? "Aug" :MONTH(release_date) == 9 ? "Sep" :MONTH(release_date) == 10 ? "Oct" :MONTH(release_date) == 11 ? "Nov" :MONTH(release_date) == 12? "Dec":"")
+		5. Click OK and see if there are no errors.
+		6. Proceed to configuring the Data Conversion Control.
+
 ---------------------------------------------------      
 [DATA CONVERSION & MAPPING]
 
 Track_Dim
  Active_Ind, Explicit -> DT_I2, 
  Total_Tracks, Duration_ms, Track_Number -> DT_I4     
-
+ Duration_ss, Duration_mn
   
 Date_Dim 
  Date_Id -> Business Key
- Year -> DT_I4 
+ Year, Month, Day, Quarter -> DT_I4 
  Release_date -> DT_DBDATE
+ dayName, monthName -> DT_WTSR
 
 
 Features_Dim 
@@ -82,6 +114,7 @@ Features_Dim
  Key -> DT_I2
  Mode -> DT_I4
 ------------------------------------------------------
+
 	   3. After setting this new data type, go back to the SCD control and select all the NEW COLUMNS made in the Input column.
 
  19. Set the SCD Methodology for the fields in question:
@@ -97,26 +130,28 @@ Features_Dim
 
       >NORMAL (Refer below):          Popularity_Streams
 
-20. Click Next. 
+ 20. Click Next. 
      IF (Historical attribute): Set the column to indicate current record to: Active_Ind
                                 Set value when current: 1
                                 Set value when expired: 0
      IF (Changing attribute): Click next again.
- 21. Uncheck the Enable inferred member support box. Click Finish.
+ 21. Uncheck the Enable inferred member support box. Check the Changing attributes box. Click Finish.
  22. Click Start to start testing the mapping. All controls should show the green check icon.
  23. Load all rows in the SQL Server Management Studio by querying: SELECT * FROM [SpotifySP].[dbo].[DimTrack]
  24. Restart the mapping and reload the rows in SSMS and check if the rows remain at 61,351 and will not double. [NAH DONT DO THIS IT TAKES FOREVER]
  
- * Comment out the empty columns for Date inside the Create_Dimensions.sql
+ *If loading the Track_Dim has the error: [Excel Source [71]] Error: The attempt to add a row to the Data Flow task buffer failed with error code 0xC0047020.
+	 1. Right click in the empty space in the Data Flow tab and click Properties.
+	 2. Scroll down to ForcedExecutionValueType and set it to: Int64
+	 3. If still encountering errors, make sure you have enough RAM. 
+	 4. Reload.
 
  > SCD TABLES LOADED CORRECTLY: 
-    Artist_Dim, Date_Dim, Popularity_Streams, Track_Dim
+    Artist_Dim, Date_Dim, Track_Dim, Features_Dim
  
- > TABLES NOT LOADED YET:
-    Features_Dim
 ------------------------------------------------------------------------------------------------------------------------
 
- [IGNORE! - GENERAL INSTRUCTIONS FOR NORMAL DIMENSION]
+ [GENERAL INSTRUCTIONS FOR NORMAL DIMENSION]
 
  14. Drag the OLE DB Destination control onto the canvas. 
  15. Rename it to: Date Dimension
@@ -136,7 +171,7 @@ Features_Dim
  29. Go back to Microsoft SQL Server Management studio to verify if the rows were loaded.
  30. Load all the rows by querying: SELECT * FROM [SpotifySP].[dbo].[DimDate]
 
- * Redo the same process for all the other dimensions.
- * For Date Dimension, comment out all the empty attributes for now. [RETEST WITHOUT COMMENTING OUT]
+> TABLES LOADED CORRECTLY:
+    Popularity_Streams,
 
 ----------------------------------------------------------------------------------------------------------------------------------------
