@@ -205,3 +205,53 @@ Artist_Dim
  The rows with problems are 24,726 rows that were removed during ETL in the previous step.
 
 *LOAD THIS ONLY ONCE! This isn't an SCD table and so the rows in the database WILL DOUBLE.
+
+
+-------------------------------------------------------------------------------------------------------------------------
+
+[QUERYING]
+
+SELECT
+    sf.Date_Key,
+    sf.Track_Key,
+    sf.Feature_Key,
+    sf.Artist_Key,
+    sf.Popularity,
+    sf.Streams
+FROM
+    StreamsPopular_Fact sf
+WHERE
+    sf.Track_Key = 1; -- Replace 'YourTrackKey' with the actual Track_Key you're searching for
+
+
+SELECT
+    dd.Release_Date,
+    dd.Month_Name,
+    dd.Day,
+    dd.Quarter,
+    dd.Year,
+    dt.Title,
+    dt.Track_Type,
+    dt.Explicit,
+    df.Valence,
+    df.Acousticness,
+    df.Danceability,
+    df.Energy,
+    df.Instrumentalness,
+    df.KeyFeature,
+    df.Liveness,
+    df.Loudness,
+    df.Mode,
+    df.Speechiness,
+    df.Tempo,
+    da.Artist_Name,
+    sf.Popularity,
+    sf.Streams
+FROM
+    StreamsPopular_Fact sf
+JOIN DimDate dd ON sf.Date_Key = dd.Date_Key
+JOIN DimTrack dt ON sf.Track_Key = dt.Track_Key
+JOIN DimFeature df ON sf.Feature_Key = df.Feature_Key
+JOIN DimArtist da ON sf.Artist_Key = da.Artist_Key
+WHERE
+    dt.Title = 'YourTrackTitle'; -- Replace 'YourTrackTitle' with the actual title of the track you want to query
