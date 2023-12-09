@@ -1,4 +1,4 @@
-CREATE TABLE FactSongPopularity (
+CREATE TABLE StreamsPopular_Fact (
     Date_Key int NOT NULL,
 	Track_Key int NOT NULL,
 	Feature_Key int NOT NULL,
@@ -8,14 +8,14 @@ CREATE TABLE FactSongPopularity (
 );
 GO
 
-alter table FactSongPopularity add constraint FK_FactSongPopularity_Date
+alter table StreamsPopular_Fact add constraint FK_StreamsPopular_Fact_Date
 foreign key (Date_Key) references DimDate (Date_Key);
 
-alter table FactSongPopularity add constraint FK_FactSongPopularity_Track
+alter table StreamsPopular_Fact add constraint FK_StreamsPopular_Fact_Track
 foreign key (Track_Key) references DimTrack (Track_Key);
 
-alter table FactSongPopularity add constraint FK_FactSongPopularity_Feature
+alter table StreamsPopular_Fact add constraint FK_StreamsPopular_Fact_Feature
 foreign key (Feature_Key) references DimFeature (Feature_Key);
 
-alter table FactSongPopularity add constraint FK_FactSongPopularity_Artist
+alter table StreamsPopular_Fact add constraint FK_StreamsPopular_Fact_Artist
 foreign key (Artist_Key) references DimArtist (Artist_Key);

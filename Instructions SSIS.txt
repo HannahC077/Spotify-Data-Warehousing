@@ -2,6 +2,7 @@
 
 * Download: Create_Dimensions.sql
             Create_Facts.sql
+			SpotifySP.bak
             EXCEL Files
 
 A. Setup SQL Server
@@ -9,7 +10,7 @@ A. Setup SQL Server
  1. Open SQL Server Management Studio
  2. Server Name: name of your device
 
-B. Create the Database
+B. Create the Database (skip to restore)
 
  3. Right click Databases folder and choose  "New Database"; Name: SpotifySP
  4. Click on SpotifySP in the Tables folder and expand. 
@@ -17,6 +18,10 @@ B. Create the Database
  6. Do the same for the Create_Fact.sql and execute the commands.
  7. Right-click the Tables folder and click Refresh.
 
+B.1 Restoring the Database
+ 1. Right click Databases folder and choose "Restore Database"
+ 2. Select Device and click the ellipses and find SpotifySP.bak
+ 3. Click OK.
 
 C. Getting Started
 
@@ -108,11 +113,13 @@ Date_Dim
  Release_date -> DT_DBDATE
  dayName, monthName -> DT_WTSR
 
-
 Features_Dim 
  all features -> DT_NUMERIC
  Key -> DT_I2
  Mode -> DT_I4
+
+Artist_Dim
+ Active_Ind -> DT_I2
 ------------------------------------------------------
 
 	   3. After setting this new data type, go back to the SCD control and select all the NEW COLUMNS made in the Input column.
@@ -135,7 +142,7 @@ Features_Dim
                                 Set value when current: 1
                                 Set value when expired: 0
      IF (Changing attribute): Click next again.
- 21. Uncheck the Enable inferred member support box. Check the Changing attributes box. Click Finish.
+ 21. Check the Enable inferred member support box. Check the Changing attributes box. Click Finish.
  22. Click Start to start testing the mapping. All controls should show the green check icon.
  23. Load all rows in the SQL Server Management Studio by querying: SELECT * FROM [SpotifySP].[dbo].[DimTrack]
  24. Restart the mapping and reload the rows in SSMS and check if the rows remain at 61,351 and will not double. [NAH DONT DO THIS IT TAKES FOREVER]
@@ -149,6 +156,7 @@ Features_Dim
  > SCD TABLES LOADED CORRECTLY: 
     Artist_Dim, Date_Dim, Track_Dim, Features_Dim
  
+ (Artist_Dim should load 36,625 rows)
 ------------------------------------------------------------------------------------------------------------------------
 
  [GENERAL INSTRUCTIONS FOR NORMAL DIMENSION]
@@ -175,3 +183,25 @@ Features_Dim
     Popularity_Streams,
 
 ----------------------------------------------------------------------------------------------------------------------------------------
+
+[GENERAL INSTRUCTIONS FOR LOADING FACT TABLE]
+
+*MAKE SURE ALL DIMENSIONS ARE LOADED FIRST BEFORE LOADING THE FACT TABLE
+
+ 1. Drag a Data Conversion column and convert all the foreign keys to: DT_I4
+ 2. Drag a Lookup Transformation control and link it between the Data Conversion control and the OLE DB Destinaton (not an SCD as fact tables dont track changes over time, just add new rows)
+ 3. In General, set these:
+		Cache mode: Full
+		Connection type: OLE DB Connection Manager
+		Redirect rows to error output (Connect a Flat File Destination to the OLE DB to redirect error outputs for debugging)
+ 4. In Connection, connect to the database SpotifySP.
+ 5. In Columns, connect the newly created column from the Data Conversion and link it in the corresponding column in the Available Lookup Columns.
+ 6. Repeat process of Lookup transformation for each foreign key and just chain these controls to each other.
+ 7. Double-check the column mapping.
+ 8. Display all rows: SELECT * FROM [SpotifySP].[dbo].[StreamsPopular_Fact]
+    Should be 36,625 rows.
+
+ *Artist_Dim will have errors, redirect the rows to a Flat File Destination. 
+ The rows with problems are 24,726 rows that were removed during ETL in the previous step.
+
+*LOAD THIS ONLY ONCE! This isn't an SCD table and so the rows in the database WILL DOUBLE.
